@@ -222,10 +222,16 @@ async function loadContributions() {
     return;
   }
   try {
-    const separator = CONTRIBUTIONS_CSV_URL.includes("?") ? "&" : "?";
-    const response = await fetch(CONTRIBUTIONS_CSV_URL + separator + "_refresh=" + Date.now(), {
-      cache: "no-store",
-      headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
+    // Build a fresh URL for every poll. Avoid custom request headers because
+    // they can trigger cross-origin preflight requests in some browsers.
+    const freshUrl = new URL(CONTRIBUTIONS_CSV_URL);
+    const refreshToken = Date.now().toString();
+    freshUrl.searchParams.set("_refresh", refreshToken);
+    freshUrl.searchParams.set("cachebust", refreshToken);
+    const response = await fetch(freshUrl.toString(), {
+      method: "GET",
+      cache: "reload",
+      redirect: "follow"
     });
     if (!response.ok) throw new Error("Could not load the published spreadsheet.");
     const csvText = await response.text();
@@ -259,7 +265,7 @@ async function loadContributions() {
       }
     }
     lastContributionData = csvText;
-    trackerStatus.textContent = "Live spreadsheet connected · Last checked " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ". Refreshes automatically every 20 seconds.";
+    trackerStatus.textContent = "Last Updated: " + new Date().toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\b(am|pm)\b/i, match => match.toLowerCase()) + " · Pulled live from Google Sheets, auto-refreshes every 5 minutes.";
   } catch (error) {
     trackerStatus.textContent = "Could not refresh the spreadsheet right now. Check your internet connection; the page will try again automatically.";
   } finally {
@@ -269,7 +275,7 @@ async function loadContributions() {
 loadContributions();
 if (CONTRIBUTIONS_CSV_URL && !CONTRIBUTIONS_CSV_URL.includes("PASTE_PUBLISHED")) {
   // Poll while the page is open, and refresh immediately when visitors return to the tab.
-  setInterval(loadContributions, 20000);
+  setInterval(loadContributions, 300000);
   window.addEventListener("focus", loadContributions);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) loadContributions(); });
   window.addEventListener("pageshow", loadContributions);
