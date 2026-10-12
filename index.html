@@ -139,7 +139,7 @@ footer{background:#321b18;color:#fff1dd;padding:36px 22px;text-align:center}foot
     <p class="tracker-note" id="tracker-status">The contribution list will appear here as verified entries are added to the spreadsheet.</p>
   </div>
   <div class="history-copy contribution-contact" style="max-width:820px;margin:26px auto 0">
-    <p style="font-size:1.05rem;margin-top:0">Contribute towards SSF Karnataka Rajyotsava 2026 and be part of the celebration.</p>
+    <p style="font-size:1.05rem;margin-top:0"><strong style="display:block;font-size:1.2rem;margin-bottom:8px">Be part of the joy!</strong>As we prepare for SSF Karnataka Rajyotsava 2026, we welcome support from everyone in our community. Contributions are entirely voluntary—your presence, Participation, and voluntary support are what bring this celebration to life.</p>
     <div class="fact-list" style="margin-top:0">
       <div class="fact"><b style="min-width:0">📞 Suresh Matam:</b><a href="tel:8546969220" style="color:#8e1717;font-weight:800;text-decoration:none">85469 69220</a></div>
       <div class="fact"><b style="min-width:0">📞 Nagendra:</b><a href="tel:9742632481" style="color:#8e1717;font-weight:800;text-decoration:none">97426 32481</a></div>
@@ -227,15 +227,15 @@ async function loadContributions() {
     const freshUrl = new URL(CONTRIBUTIONS_CSV_URL);
     const refreshToken = Date.now().toString();
     freshUrl.searchParams.set("_refresh", refreshToken);
-    freshUrl.searchParams.set("cachebust", refreshToken);
     const response = await fetch(freshUrl.toString(), {
       method: "GET",
-      cache: "reload",
+      cache: "no-store",
       redirect: "follow"
     });
     if (!response.ok) throw new Error("Could not load the published spreadsheet.");
     const csvText = await response.text();
     if (!csvText || !csvText.trim()) throw new Error("The published spreadsheet is empty or unavailable.");
+    // The timestamp below means the request completed; Google may still take time to publish edits.
     const rawRows = parseCSV(csvText);
     if (!rawRows.length) throw new Error("The published spreadsheet is empty or unavailable.");
     const headers = rawRows[0].map(normalizeHeader);
@@ -264,8 +264,10 @@ async function loadContributions() {
         contributionRows.appendChild(tr);
       }
     }
+    const checkedAt = new Date().toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\b(am|pm)\b/i, match => match.toLowerCase());
+    const dataChanged = csvText !== lastContributionData;
     lastContributionData = csvText;
-    trackerStatus.textContent = "Last Updated: " + new Date().toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\b(am|pm)\b/i, match => match.toLowerCase()) + " · Pulled live from Google Sheets, auto-refreshes every 5 minutes.";
+    trackerStatus.textContent = "Last Checked: " + checkedAt + (dataChanged ? " · Contribution data loaded from Google Sheets." : " · No new spreadsheet data was returned.") + " Auto-checks every 5 minutes.";
   } catch (error) {
     trackerStatus.textContent = "Could not refresh the spreadsheet right now. Check your internet connection; the page will try again automatically.";
   } finally {
